@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Suivi du matériel</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mut:#6b7280;--bd:#dfe3ea;--ac:#2563eb;--ok:#16a34a;--ko:#dc2626}
+@media(prefers-color-scheme:dark){:root{--bg:#14171d;--card:#1d222b;--tx:#e8ebf0;--mut:#9aa3b2;--bd:#323946;--ac:#60a5fa;--ok:#4ade80;--ko:#f87171}}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--bd);padding:10px 16px}
+h1{font-size:18px;margin:0 0 8px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input,select,textarea,button{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px}
+button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+#q{flex:1;min-width:160px}
+main{padding:12px 16px;max-width:980px;margin:auto}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin:18px 0 6px}
+.item{background:var(--card);border:1px solid var(--bd);border-radius:8px;margin-bottom:6px}
+.row{display:flex;gap:10px;align-items:center;padding:8px 10px;cursor:pointer;flex-wrap:wrap}
+.name{flex:1;min-width:200px}.name small{display:block;color:var(--mut)}
+.badge{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mut)}
+.b-oui{color:var(--ok);border-color:var(--ok)}.b-non{color:var(--ko);border-color:var(--ko)}
+.det{display:none;padding:8px 10px 12px;border-top:1px solid var(--bd)}.item.open .det{display:block}
+.seg button{border-radius:0}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}
+.seg .on-oui{background:var(--ok);color:#fff;border-color:var(--ok)}.seg .on-non{background:var(--ko);color:#fff;border-color:var(--ko)}
+table{width:100%;border-collapse:collapse;margin:8px 0}td,th{padding:3px 4px;text-align:left;font-size:14px}th{color:var(--mut);font-weight:500}
+td input{width:100%}td.q input{width:64px}
+textarea{width:100%;min-height:50px}
+.mut{color:var(--mut)}
+@media(max-width:600px){main{padding:8px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Suivi du matériel <span class="mut" id="stats"></span></h1>
+<div class="bar">
+<input id="q" type="search" placeholder="Rechercher un article, une personne, un commentaire…">
+<select id="f"><option value="">Tous</option><option value="oui">Avons</option><option value="non">N'avons pas</option><option value="?">Non renseigné</option><option value="remis">Déjà remis</option></select>
+<button id="add">+ Article</button>
+<button id="csv">Export Excel (CSV)</button>
+<button id="save">Sauvegarde</button>
+<button id="load">Restaurer</button>
+<input id="file" type="file" accept=".json" hidden>
+</div>
+</header>
+<main id="list"></main>
+<script>
+const ITEMS=[{"id": "o1", "cat": "Outillage à main", "name": "Lot de 6 tournevis d'électricien", "sub": false, "refs": ["WURTH 61396325", "TRENOIS WIH139"]}, {"id": "o2", "cat": "Outillage à main", "name": "Lot de tournevis de précision", "sub": false, "refs": ["TRENOIS VES002", "TELENCO 15508"]}, {"id": "o3", "cat": "Outillage à main", "name": "Lot de Clé Allen", "sub": false, "refs": ["TRENOIS KST011", "WURTH 71531100"]}, {"id": "o4", "cat": "Outillage à main", "name": "Lot de Clé Plate", "sub": false, "refs": ["TELENCO 32068", "WURTH 71330140"]}, {"id": "o5", "cat": "Outillage à main", "name": "Clé à Molette", "sub": false, "refs": ["WURTH 715224006", "TELENCO 1000505"]}, {"id": "o6", "cat": "Outillage à main", "name": "Boite à cliquet", "sub": false, "refs": ["TRENOIS MAU0093", "WURTH 096511 32"]}, {"id": "o7", "cat": "Outillage à main", "name": "Boîte tournevis avec embout (plat, cruci, torx…)", "sub": false, "refs": ["TRENOIS FBC250", "WURTH 096511 32"]}, {"id": "o8", "cat": "Outillage à main", "name": "Pince multiprise", "sub": false, "refs": ["TELENCO 31033", "TRENOIS FAC170"]}, {"id": "o9", "cat": "Outillage à main", "name": "Pince universelle", "sub": false, "refs": ["TELENCO 32063", "WURTH 71401574"]}, {"id": "o10", "cat": "Outillage à main", "name": "Pince à bec", "sub": false, "refs": ["WURTH 71401577", "REXEL BIZ790031"]}, {"id": "o11", "cat": "Outillage à main", "name": "Pince coupante", "sub": false, "refs": ["TELENCO 32062", "WURTH 71401572"]}, {"id": "o12", "cat": "Outillage à main", "name": "Pince coupante électronique", "sub": false, "refs": ["REXEL BIZ700301", "WURTH 071407 36"]}, {"id": "o13", "cat": "Outillage à main", "name": "Pince à dénuder", "sub": false, "refs": ["TELENCO 32065", "WURTH 71401570"]}, {"id": "o14", "cat": "Outillage à main", "name": "Pince RJ45", "sub": false, "refs": ["TRENOIS DHL068", "TELENCO 1526"]}, {"id": "o15", "cat": "Outillage à main", "name": "Pince BNC KX6/KX8", "sub": false, "refs": ["REXEL GGM907GMKX"]}, {"id": "o16", "cat": "Outillage à main", "name": "Pince à sertir", "sub": false, "refs": ["WURTH 714101111", "TELENCO 1699"]}, {"id": "o17", "cat": "Outillage à main", "name": "Pince à COLLIER PLASTIQUE (colson)", "sub": false, "refs": ["REXEL LEG031997"]}, {"id": "o18", "cat": "Outillage à main", "name": "Coupe tube", "sub": false, "refs": ["WURTH 714551345", "TELENCO 1778"]}, {"id": "o19", "cat": "Outillage à main", "name": "Niveau à bulle", "sub": false, "refs": ["TELENCO 2817", "TRENOIS STA161"]}, {"id": "o20", "cat": "Outillage à main", "name": "Marteau", "sub": false, "refs": ["TELENCO 0503", "TRENOIS STA517"]}, {"id": "o21", "cat": "Outillage à main", "name": "Burin", "sub": false, "refs": ["TELENCO 1198", "WURTH 071463 11"]}, {"id": "o22", "cat": "Outillage à main", "name": "Scie à métaux", "sub": false, "refs": ["WURTH 071464 01", "TELENCO 0618"]}, {"id": "o23", "cat": "Outillage à main", "name": "Scie Cloche multi-diamètre", "sub": false, "refs": ["TRENOIS FBC274", "WURTH 5964063291"]}, {"id": "o24", "cat": "Outillage à main", "name": "Pistolet à cartouche", "sub": false, "refs": ["TRENOIS TAJ002", "WURTH 8913125"]}, {"id": "o25", "cat": "Outillage à main", "name": "Jeux de clé d'armoire (carré, triangle, double panneton)", "sub": false, "refs": ["WURTH 071516 23", "TRENOIS KNI022"]}, {"id": "o26", "cat": "Outillage à main", "name": "Jeux de clé de serrure (405,455…)", "sub": false, "refs": ["TRENOIS S-S4553470"]}, {"id": "o27", "cat": "Outillage à main", "name": "Aiguille à baguette (baguette tire-fils)", "sub": false, "refs": ["WURTH 975810420"]}, {"id": "o28", "cat": "Outillage à main", "name": "Sac de transport (A) / Caisse à outils (B)", "sub": false, "refs": ["TRENOIS STA086", "WURTH 715930222"]}, {"id": "o29", "cat": "Outillage à main", "name": "Echelle téléscopique position escabeau", "sub": false, "refs": ["TRENOIS GIR002", "WURTH 0962975400"]}, {"id": "o30", "cat": "Outillage à main", "name": "Escabeau 3/4 marches", "sub": false, "refs": ["TRENOIS COG120", "TELENCO 10520"]}, {"id": "o31", "cat": "Outillage à main", "name": "Diable Pliant", "sub": false, "refs": ["TRENOIS MDT001", "TELENCO 7106"]}, {"id": "o32", "cat": "Outils de mesure et électroportatif", "name": "Pince Amperemetrique", "sub": false, "refs": ["WURTH 71553715", "TRENOIS SFR002"]}, {"id": "o33", "cat": "Outils de mesure et électroportatif", "name": "Pince Multimètre RS PRO - ICM30R étalonné (SSI)", "sub": false, "refs": ["TRENOIS CHV013"]}, {"id": "o34", "cat": "Outils de mesure et électroportatif", "name": "Câble de rechange multimètre", "sub": true, "refs": ["REXEL FR4SA103"]}, {"id": "o35", "cat": "Outils de mesure et électroportatif", "name": "Télémètre laser 50m", "sub": false, "refs": ["TRENOIS THA600", "WURTH 5709300522"]}, {"id": "o36", "cat": "Outils de mesure et électroportatif", "name": "VAT", "sub": false, "refs": ["TELENCO 12538", "TRENOIS SET-ARN001"]}, {"id": "o37", "cat": "Outils de mesure et électroportatif", "name": "Traceur de câble (basique)", "sub": false, "refs": ["TELENCO 33001"]}, {"id": "o38", "cat": "Outils de mesure et électroportatif", "name": "Laser fibre optique", "sub": false, "refs": ["TELENCO 15289"]}, {"id": "o39", "cat": "Outils de mesure et électroportatif", "name": "Testeur RJ45", "sub": false, "refs": ["REXEL GGM908CTR2"]}, {"id": "o40", "cat": "Outils de mesure et électroportatif", "name": "Enrouleur 25m 3G2,5", "sub": false, "refs": ["TRENOIS BRE102"]}, {"id": "o41", "cat": "Outils de mesure et électroportatif", "name": "Perceuse Visseuse sans fil", "sub": false, "refs": ["PROLIANS 66523985"]}, {"id": "o42", "cat": "Outils de mesure et électroportatif", "name": "Perforateur SDS sans fil", "sub": false, "refs": ["PROLIANS 69263097"]}, {"id": "o43", "cat": "Outils de mesure et électroportatif", "name": "Disqueuse filaire", "sub": false, "refs": ["TRENOIS FBC056"]}, {"id": "o44", "cat": "Outils de mesure et électroportatif", "name": "Boite de foret à métaux", "sub": true, "refs": ["TRENOIS TIV019"]}, {"id": "o45", "cat": "Outils de mesure et électroportatif", "name": "Boite de foret à béton(SDS)", "sub": true, "refs": ["TRENOIS ATC025"]}, {"id": "o46", "cat": "Outils de mesure et électroportatif", "name": "Fraise métal à étage", "sub": true, "refs": ["TRENOIS IUR001"]}, {"id": "o47", "cat": "Outils de mesure et électroportatif", "name": "Disque pour disqueuse", "sub": true, "refs": ["TRENOIS COM011"]}, {"id": "o48", "cat": "Outils de mesure et électroportatif", "name": "Fer à souder à gaz", "sub": false, "refs": ["TELENCO 3771", "WURTH 0984990100"]}, {"id": "o49", "cat": "Outils de mesure et électroportatif", "name": "Gaz pour fer à souder", "sub": true, "refs": ["TELENCO 4657", "WURTH 0893250001"]}, {"id": "o50", "cat": "Outils de mesure et électroportatif", "name": "Etain", "sub": false, "refs": ["REXEL BIZ700099"]}, {"id": "o51", "cat": "Outils de mesure et électroportatif", "name": "Etiqueteuse (DYMO)", "sub": false, "refs": ["TRENOIS EXO7104", "REXEL BRTPTH110"]}, {"id": "o52", "cat": "Outils de mesure et électroportatif", "name": "Ruban étiqueteuse (DYMO)", "sub": true, "refs": ["TRENOIS EXO7105", "REXEL BRTTZES231"]}, {"id": "o53", "cat": "Equipement informatique", "name": "Clé USB - 256Go", "sub": false, "refs": ["TD SYNNEX 3458538"]}, {"id": "o54", "cat": "Equipement informatique", "name": "Disque Dur SSD Externe - 1To", "sub": false, "refs": ["TD SYNNEX STHR1000800"]}, {"id": "o55", "cat": "Equipement informatique", "name": "SWITCH 8 ports 10/100/1000 MBITS/S - POE", "sub": false, "refs": ["TD SYNNEX GS308EP-100PES"]}, {"id": "o56", "cat": "Outils Informatique", "name": "Moxa UPORT 1150 (convert, USB port COM)", "sub": false, "refs": ["ADM21 UPort 1150"]}, {"id": "o57", "cat": "Vidéo Surveillance", "name": "watch cam IP modèle à valider avec les RT", "sub": false, "refs": ["TEVAH TESTEUR IP HD PLUS V2"]}, {"id": "o58", "cat": "Autres", "name": "CADENAS DE CONSIGNATION ANSE NYLON Ø 6 X 38 MM", "sub": false, "refs": ["WURTH 689904040", "TRENOIS THR530"]}, {"id": "o59", "cat": "Autres", "name": "FORET ETAGE HSS Ø6 A Ø37 MM PG7 PG29", "sub": false, "refs": ["WURTH 0694450637"]}, {"id": "o60", "cat": "Autres", "name": "COUTEAU DE PEINTRE - 20 MM", "sub": false, "refs": ["WURTH 0695940902"]}, {"id": "o61", "cat": "Autres", "name": "CISEAU ELEC LAME INOX 140MM", "sub": false, "refs": ["TRENOIS EXO81801", "WURTH 714036331"]}, {"id": "o62", "cat": "Autres", "name": "CUTTER BIMAT 18MM + 3 LAMES NOIRES", "sub": false, "refs": ["WURTH 071566 295"]}, {"id": "o63", "cat": "Autres", "name": "LAMPE FRONTALE NEW LED", "sub": false, "refs": ["WURTH 0827809200"]}, {"id": "o64", "cat": "Autres", "name": "BALADEUSE SLIM LIGHT RI", "sub": false, "refs": ["TRENOIS BRE00871", "WURTH 827940290"]}, {"id": "o65", "cat": "Autres", "name": "MALLETTE PHARMACIE 1ER SECOURS", "sub": false, "refs": ["WURTH 08991101"]}, {"id": "o66", "cat": "Autres", "name": "PINCE A CHEVILLES METAL, SUPRA FIX", "sub": false, "refs": ["WURTH 090306 231"]}, {"id": "o67", "cat": "Autres", "name": "VERROU DISJONCTEUR UNIVERSEL", "sub": false, "refs": ["WURTH 0978930004"]}, {"id": "o68", "cat": "Autres", "name": "DETECTEUR DIGITAL MD 12", "sub": false, "refs": ["TRENOIS STA149", "WURTH 5709300800"]}, {"id": "o69", "cat": "Autres", "name": "CABLE RS232 PROGRAMMATION", "sub": false, "refs": ["KIDDE ATS1630"]}, {"id": "o70", "cat": "Autres", "name": "CABLE USB-RS232", "sub": false, "refs": ["RS COMPONENTS 144-5699"]}, {"id": "o71", "cat": "Autres", "name": "Marqueur indélébile noir pointe ogive 1,5", "sub": false, "refs": ["WURTH 0984400802", "TRENOIS EDD005"]}];
+const KEY="suivi_materiel_v1";
+let S={};try{S=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
+S.have=S.have||{};S.rem=S.rem||{};S.com=S.com||{};S.extra=S.extra||[];
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert("Enregistrement impossible dans ce navigateur : utilise « Sauvegarde ».")}};
+const all=()=>ITEMS.concat(S.extra);
+const open=new Set();
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=d=>d?d.split("-").reverse().join("/"):"";
+const totalQty=id=>(S.rem[id]||[]).reduce((a,r)=>a+(+r.qty||0),0);
+
+function render(){
+  const q=document.getElementById("q").value.toLowerCase(),f=document.getElementById("f").value;
+  let html="",cat=null,shown=0;
+  for(const it of all()){
+    const h=S.have[it.id]||"",rs=S.rem[it.id]||[],c=S.com[it.id]||"";
+    const hay=(it.name+" "+it.refs.join(" ")+" "+c+" "+rs.map(r=>r.to+" "+r.date).join(" ")).toLowerCase();
+    if(q&&!hay.includes(q))continue;
+    if(f==="remis"?!rs.length:f==="?"?h:f&&h!==f)continue;
+    shown++;
+    if(it.cat!==cat){cat=it.cat;html+=`<h2>${esc(cat)}</h2>`}
+    const last=rs.length?rs.map(r=>r.date).filter(Boolean).sort().pop():"";
+    html+=`<div class="item ${open.has(it.id)?"open":""}" data-id="${it.id}">
+<div class="row" data-t="toggle"><div class="name">${esc(it.name.trim())}<small>${esc(it.refs.join(" · "))}</small></div>
+<span class="badge ${h==="oui"?"b-oui":h==="non"?"b-non":""}">${h==="oui"?"On l'a":h==="non"?"On ne l'a pas":"?"}</span>
+${rs.length?`<span class="badge">${rs.length} remise${rs.length>1?"s":""} · qté ${totalQty(it.id)}${last?" · dernière "+fmt(last):""}</span>`:""}</div>
+<div class="det">
+<div class="seg"><button data-t="have" data-v="oui" class="${h==="oui"?"on-oui":""}">On l'a</button><button data-t="have" data-v="non" class="${h==="non"?"on-non":""}">On ne l'a pas</button><button data-t="have" data-v="">?</button></div>
+<table><tr><th>Date</th><th>Quantité</th><th>À qui</th><th></th></tr>
+${rs.map((r,i)=>`<tr><td><input type="date" data-t="r" data-i="${i}" data-k="date" value="${esc(r.date)}"></td><td class="q"><input type="number" min="0" data-t="r" data-i="${i}" data-k="qty" value="${esc(r.qty)}"></td><td><input data-t="r" data-i="${i}" data-k="to" value="${esc(r.to)}" placeholder="Nom"></td><td><button data-t="del" data-i="${i}" title="Supprimer">✕</button></td></tr>`).join("")}
+</table>
+<button data-t="radd">+ Remise</button>
+<p class="mut" style="margin:10px 0 4px">Commentaire</p>
+<textarea data-t="com">${esc(c)}</textarea>
+${it.extra?`<p><button data-t="rmitem">Supprimer cet article</button></p>`:""}
+</div></div>`;
+  }
+  document.getElementById("list").innerHTML=html||'<p class="mut">Aucun article.</p>';
+  const a=all();
+  document.getElementById("stats").textContent=`— ${a.filter(i=>S.have[i.id]==="oui").length} avons / ${a.filter(i=>S.have[i.id]==="non").length} manquants / ${a.length} articles`;
+}
+
+const L=document.getElementById("list");
+L.addEventListener("click",e=>{
+  const t=e.target.closest("[data-t]");if(!t)return;
+  const id=t.closest(".item").dataset.id,k=t.dataset.t;
+  if(k==="toggle"){open.has(id)?open.delete(id):open.add(id);t.parentElement.classList.toggle("open");return}
+  if(k==="have"){S.have[id]=t.dataset.v}
+  else if(k==="radd"){(S.rem[id]=S.rem[id]||[]).push({date:new Date().toISOString().slice(0,10),qty:1,to:""})}
+  else if(k==="del"){S.rem[id].splice(+t.dataset.i,1)}
+  else if(k==="rmitem"){if(!confirm("Supprimer cet article ?"))return;S.extra=S.extra.filter(x=>x.id!==id);delete S.have[id];delete S.rem[id];delete S.com[id]}
+  else return;
+  persist();render();
+});
+L.addEventListener("change",e=>{
+  const t=e.target,id=t.closest(".item")?.dataset.id;if(!id)return;
+  if(t.dataset.t==="r")S.rem[id][+t.dataset.i][t.dataset.k]=t.value;
+  else if(t.dataset.t==="com")S.com[id]=t.value;
+  else return;
+  persist();render();
+});
+document.getElementById("q").oninput=render;
+document.getElementById("f").onchange=render;
+document.getElementById("add").onclick=()=>{
+  const n=prompt("Nom de l'article ?");if(!n||!n.trim())return;
+  const id="x"+Date.now();S.extra.push({id,cat:"Ajoutés",name:n.trim(),refs:[],extra:true});open.add(id);persist();render();
+};
+const dl=(name,txt,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+document.getElementById("save").onclick=()=>dl("suivi_materiel_"+new Date().toISOString().slice(0,10)+".json",JSON.stringify(S),"application/json");
+document.getElementById("load").onclick=()=>document.getElementById("file").click();
+document.getElementById("file").onchange=e=>{
+  const fl=e.target.files[0];if(!fl)return;
+  fl.text().then(t=>{const d=JSON.parse(t);if(!d.have||!d.rem)throw 0;if(!confirm("Remplacer les données actuelles par cette sauvegarde ?"))return;S=d;S.com=S.com||{};S.extra=S.extra||[];persist();render()}).catch(()=>alert("Fichier invalide.")).finally(()=>e.target.value="");
+};
+document.getElementById("csv").onclick=()=>{
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const out=[["Catégorie","Article","Réf / Fournisseur","Avons","Date remise","Quantité","À qui","Commentaire"].map(q).join(";")];
+  for(const it of all()){
+    const h=S.have[it.id]==="oui"?"Oui":S.have[it.id]==="non"?"Non":"",rs=S.rem[it.id]||[{}];
+    rs.forEach((r,i)=>out.push([it.cat,it.name.trim(),it.refs.join(" | "),h,fmt(r.date),r.qty??"",r.to??"",i===0?S.com[it.id]||"":""].map(q).join(";")));
+  }
+  dl("suivi_materiel.csv","﻿"+out.join("\r\n"),"text/csv;charset=utf-8");
+};
+render();
+</script>
+</body>
+</html>
